@@ -18,6 +18,7 @@ public class Property {
     private String description;
     private String containerOf;
     private AllowableValues allowableValues;
+    private boolean required = true;
 
     private Property() {
     }
@@ -65,8 +66,12 @@ public class Property {
         }
         return result;
     }
+    
+    public boolean isRequired() {
+		return required;
+	}
 
-    @Override
+	@Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -74,12 +79,13 @@ public class Property {
         return Objects.equal(type, that.type)
                 && Objects.equal(description, that.description)
                 && Objects.equal(containerOf, that.containerOf)
-                && Objects.equal(allowableValues, that.allowableValues);
+                && Objects.equal(allowableValues, that.allowableValues)
+                && Objects.equal(required, that.required);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(type, description, containerOf, allowableValues);
+        return Objects.hashCode(type, description, containerOf, allowableValues, required);
     }
 
     @Override
@@ -89,6 +95,7 @@ public class Property {
                 .add("description", description)
                 .add("containerOf", containerOf)
                 .add("allowableValues", allowableValues)
+                .add("required", required)
                 .toString();
     }
 }
