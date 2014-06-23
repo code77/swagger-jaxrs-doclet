@@ -1,7 +1,6 @@
 package com.hypnoticocelot.jaxrs.doclet.parser;
 
 import com.google.common.base.Predicate;
-
 import com.hypnoticocelot.jaxrs.doclet.DocletOptions;
 import com.hypnoticocelot.jaxrs.doclet.model.Model;
 import com.hypnoticocelot.jaxrs.doclet.model.Property;
@@ -41,7 +40,7 @@ public class ApiModelParser {
             return;
         }
 
-        Map<String, Type> types = findReferencedTypes(classDoc);
+        Map<String, PropertyDescr> types = findReferencedTypes(classDoc);
         Map<String, Property> elements = findReferencedElements(types);
         if (!elements.isEmpty()) {
             models.add(new Model(translator.typeName(type).value(), elements));
@@ -49,15 +48,15 @@ public class ApiModelParser {
         }
     }
 
-    private Map<String, Type> findReferencedTypes(ClassDoc classDoc) {
-        Map<String, Type> elements = new HashMap<String, Type>();
+    private Map<String, PropertyDescr> findReferencedTypes(ClassDoc classDoc) {
+        Map<String, PropertyDescr> elements = new HashMap<String, PropertyDescr>();
 
         FieldDoc[] fieldDocs = classDoc.fields();
         if (fieldDocs != null) {
             for (FieldDoc field : fieldDocs) {
                 String name = translator.fieldName(field).value();
                 if (name != null && !elements.containsKey(name)) {
-                    elements.put(name, field.type());
+                    elements.put(name, new PropertyDescr(field.type(), field.commentText()));
                 }
             }
         }
@@ -67,18 +66,18 @@ public class ApiModelParser {
             for (MethodDoc method : methodDocs) {
                 String name = translator.methodName(method).value();
                 if (name != null && !elements.containsKey(name)) {
-                    elements.put(name, method.returnType());
+                    elements.put(name, new PropertyDescr(method.returnType(), extractReturnObjJavaDoc(method)));
                 }
             }
         }
         return elements;
     }
-
-    private Map<String, Property> findReferencedElements(Map<String, Type> types) {
+    
+    private Map<String, Property> findReferencedElements(Map<String, PropertyDescr> types) {
         Map<String, Property> elements = new HashMap<String, Property>();
-        for (Map.Entry<String, Type> entry : types.entrySet()) {
+        for (Map.Entry<String, PropertyDescr> entry : types.entrySet()) {
             String typeName = entry.getKey();
-            Type type = entry.getValue();
+            Type type = entry.getValue().type;
             ClassDoc typeClassDoc = type.asClassDoc();
 
             Type containerOf = parseParameterisedTypeOf(type);
@@ -87,17 +86,18 @@ public class ApiModelParser {
             String propertyName = translator.typeName(type).value();
             Property property;
             if (typeClassDoc != null && typeClassDoc.isEnum()) {
-                property = new Property(typeClassDoc.enumConstants(), null);
+                property = new Property(typeClassDoc.enumConstants(), entry.getValue().javadoc);
             } else {
-                property = new Property(propertyName, null, containerTypeOf);
+                property = new Property(propertyName, entry.getValue().javadoc, containerTypeOf);
             }
             elements.put(typeName, property);
         }
         return elements;
     }
 
-    private void parseNestedModels(Collection<Type> types) {
-        for (Type type : types) {
+    private void parseNestedModels(Collection<PropertyDescr> types) {
+        for (PropertyDescr descr : types) {
+            Type type = descr.type;
             parseModel(type);
             Type pt = parseParameterisedTypeOf(type);
             if (pt != null) {
@@ -127,4 +127,25 @@ public class ApiModelParser {
         }).size() > 0;
     }
 
+    /**
+     * simple wrapper around information about a class field or a method return type
+     */
+    private static class PropertyDescr {
+        private Type type;
+        private String javadoc;
+        
+        private PropertyDescr(Type type, String javadoc) {
+            this.type = type;
+            this.javadoc = javadoc;
+        }
+    }
+    
+    /**
+     * @param method
+     * @return javadoc text for "@return" tag of a method given as <code>method</code>
+     */
+    private String extractReturnObjJavaDoc(MethodDoc method)  {
+        Tag[] returnJavaDoc = method.tags("@return");
+        return returnJavaDoc.length > 0 ? returnJavaDoc[0].text() : null;
+    }
 }
