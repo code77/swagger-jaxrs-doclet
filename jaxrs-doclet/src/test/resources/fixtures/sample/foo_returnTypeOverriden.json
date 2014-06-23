@@ -120,5 +120,22 @@
                 }
             ]
         }
-    ]
+    ],
+    "models" : {
+        "SubResource" : {
+          "id" : "SubResource",
+          "properties" : {
+            "value" : {
+              "type" : "string",
+              "required" : true,
+              "description" : "some value"
+            },
+            "valueThroughAnotherMethod" : {
+              "type" : "string",
+              "required" : true,
+              "description" : "copy of a value"
+            }
+          }
+        }
+  }
 }
